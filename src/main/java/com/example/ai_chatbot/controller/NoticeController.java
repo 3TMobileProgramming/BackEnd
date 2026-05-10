@@ -3,11 +3,14 @@ package com.example.ai_chatbot.controller;
 import com.example.ai_chatbot.entity.Notice;
 import com.example.ai_chatbot.repository.NoticeRepository;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 
 import java.util.List;
+
+
 
 @RestController
 public class NoticeController {
@@ -38,5 +41,10 @@ public class NoticeController {
     @GetMapping("/notices")
     public List<Notice> getNotices() {
         return noticeRepository.findAll();
+    }
+
+    @GetMapping("/search")
+    public List<Notice> searchNotices(@RequestParam String keyword){
+        return noticeRepository.findByTitleContainingOrContentContaining(keyword, keyword);
     }
 }
