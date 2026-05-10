@@ -45,6 +45,14 @@ public class NoticeController {
 
     @GetMapping("/search")
     public List<Notice> searchNotices(@RequestParam String keyword){
-        return noticeRepository.findByTitleContainingOrContentContaining(keyword, keyword);
+        return noticeRepository.findByTitleContainingOrContentContainingOrCategoryContaining(
+                keyword,
+                keyword,
+                keyword
+        );
+    }
+    @GetMapping("/notices/category")
+    public List<Notice> getNoticeByCategory(@RequestParam String category){
+        return noticeRepository.findByCategory(category);
     }
 }
