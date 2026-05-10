@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 
+import java.util.List;
+
 @RestController
 public class NoticeController {
 
@@ -32,5 +34,9 @@ public class NoticeController {
         noticeRepository.save(notice);
 
         return "공지 저장 완료!";
+    }
+    @GetMapping("/notices")
+    public List<Notice> getNotices() {
+        return noticeRepository.findAll();
     }
 }
