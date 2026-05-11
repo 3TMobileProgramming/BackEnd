@@ -24,12 +24,18 @@ public class NoticeController {
     @GetMapping("/notice-test")
     public String noticeTest() {
 
+        String url="https://example.com";
+
+        if (noticeRepository.existsByUrl(url)){
+            return "이미 저장된 공지입니다.";
+        }
+
         Notice notice = new Notice();
 
         notice.setTitle("수강신청 안내");
         notice.setContent("2026학년도 1학기 수강신청 일정입니다.");
         notice.setCategory("학사");
-        notice.setUrl("https://example.com");
+        notice.setUrl(url);
         notice.setContentHash("test123");
         notice.setCreatedAt(LocalDateTime.now());
         notice.setUpdatedAt(LocalDateTime.now());

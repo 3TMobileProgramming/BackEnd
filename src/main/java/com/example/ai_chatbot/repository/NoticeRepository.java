@@ -12,4 +12,6 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
     );
 
     List<Notice> findByCategory(String Category);
+
+    boolean existsByUrl(String Url); //sql문에서 중복되는 url이 있다면 true로 반환
 }
