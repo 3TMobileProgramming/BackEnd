@@ -1,5 +1,6 @@
 package com.example.ai_chatbot.controller;
 
+import com.example.ai_chatbot.dto.NoticeResponseDto;
 import com.example.ai_chatbot.entity.Notice;
 //import com.example.ai_chatbot.repository.NoticeRepository;
 import com.example.ai_chatbot.service.NoticeService;
@@ -28,16 +29,16 @@ public class NoticeController {
         }
 
     @GetMapping("/notices")
-    public List<Notice> getNotices() {
+    public List<NoticeResponseDto> getNotices() {
         return noticeService.getAllNotices();
     }
 
     @GetMapping("/search")
-    public List<Notice> searchNotices(@RequestParam String keyword){
+    public List<NoticeResponseDto> searchNotices(@RequestParam String keyword){
         return noticeService.searchNotices(keyword);
     }
     @GetMapping("/notices/category")
-    public List<Notice> getNoticeByCategory(@RequestParam String category){
+    public List<NoticeResponseDto> getNoticeByCategory(@RequestParam String category){
         return noticeService.getNoticesByCategory(category);
     }
 }

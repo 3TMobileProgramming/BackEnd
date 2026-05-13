@@ -4,8 +4,12 @@ import com.example.ai_chatbot.entity.Notice;
 import com.example.ai_chatbot.repository.NoticeRepository;
 import org.springframework.stereotype.Service;
 
+import com.example.ai_chatbot.dto.NoticeResponseDto;
+import java.util.stream.Collector;
+
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class NoticeService {
@@ -34,20 +38,30 @@ public class NoticeService {
         return "공지 저장 완료";
     }
 
-    public List<Notice> getAllNotices(){
-        return noticeRepository.findAll();
+    public List<NoticeResponseDto> getAllNotices() {
+        return noticeRepository.findAll()
+                .stream()
+                .map(NoticeResponseDto::new)
+                .collect(Collectors.toList());
     }
 
-    public List<Notice> searchNotices(String keyword){ //키워드 검색 로직
+    public List<NoticeResponseDto> searchNotices(String keyword){ //키워드 검색 로직
         return noticeRepository.findByTitleContainingOrContentContainingOrCategoryContaining(
                 keyword,
                 keyword,
                 keyword
-        );
+        )
+                .stream()
+                .map(NoticeResponseDto::new)
+                .collect(Collectors.toList());
     }
 
-    public List<Notice> getNoticesByCategory(String category){ //카테고리 기준 조회 로직
-        return noticeRepository.findByCategory(category);
+    public List<NoticeResponseDto> getNoticesByCategory(String category){ //카테고리 기준 조회 로직
+
+        return noticeRepository.findByCategory(category)
+                .stream()
+                .map(NoticeResponseDto::new)
+                .collect(Collectors.toList());
     }
 
 }
