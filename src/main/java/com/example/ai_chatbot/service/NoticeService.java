@@ -50,7 +50,8 @@ public class NoticeService {
     public List<NoticeResponseDto> searchNotices(String keyword){ //키워드 검색 로직
        String normalizedKeyword=keywordService.normalizeKeyword(keyword);
 
-
+        System.out.println("입력키워드: "+ keyword);
+        System.out.println("정규화 키워드: "+ normalizedKeyword);
 
         return noticeRepository.findByTitleContainingOrContentContainingOrCategoryContaining(
                 normalizedKeyword,
