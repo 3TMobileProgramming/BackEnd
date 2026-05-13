@@ -14,9 +14,11 @@ import java.util.stream.Collectors;
 @Service
 public class NoticeService {
     private final NoticeRepository noticeRepository;
+    private final KeywordService keywordService;
 
-    public NoticeService(NoticeRepository noticeRepository){
+    public NoticeService(NoticeRepository noticeRepository, KeywordService keywordService){
         this.noticeRepository=noticeRepository;
+        this.keywordService=keywordService;
     }
     public String saveTestNotice(){
         String url= "https://example.com";
@@ -46,10 +48,14 @@ public class NoticeService {
     }
 
     public List<NoticeResponseDto> searchNotices(String keyword){ //키워드 검색 로직
+       String normalizedKeyword=keywordService.normalizeKeyword(keyword);
+
+
+
         return noticeRepository.findByTitleContainingOrContentContainingOrCategoryContaining(
-                keyword,
-                keyword,
-                keyword
+                normalizedKeyword,
+                normalizedKeyword,
+                normalizedKeyword
         )
                 .stream()
                 .map(NoticeResponseDto::new)
