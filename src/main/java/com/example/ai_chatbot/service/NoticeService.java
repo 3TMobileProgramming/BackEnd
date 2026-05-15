@@ -4,7 +4,9 @@ import com.example.ai_chatbot.entity.Notice;
 import com.example.ai_chatbot.repository.NoticeRepository;
 import org.springframework.stereotype.Service;
 
+
 import com.example.ai_chatbot.dto.NoticeResponseDto;
+import com.example.ai_chatbot.dto.SearchResponseDto;
 import java.util.stream.Collector;
 
 import java.time.LocalDateTime;
@@ -47,20 +49,21 @@ public class NoticeService {
                 .collect(Collectors.toList());
     }
 
-    public List<NoticeResponseDto> searchNotices(String keyword){ //키워드 검색 로직
+    public SearchResponseDto searchNotices(String keyword){ //키워드 검색 로직
        String normalizedKeyword=keywordService.normalizeKeyword(keyword);
 
-        System.out.println("입력키워드: "+ keyword);
-        System.out.println("정규화 키워드: "+ normalizedKeyword);
 
-        return noticeRepository.findByTitleContainingOrContentContainingOrCategoryContaining(
+       List<NoticeResponseDto> results=
+               noticeRepository.findByTitleContainingOrContentContainingOrCategoryContaining(
                 normalizedKeyword,
                 normalizedKeyword,
                 normalizedKeyword
-        )
+               )
                 .stream()
                 .map(NoticeResponseDto::new)
                 .collect(Collectors.toList());
+
+       return new SearchResponseDto(normalizedKeyword, results);
     }
 
     public List<NoticeResponseDto> getNoticesByCategory(String category){ //카테고리 기준 조회 로직

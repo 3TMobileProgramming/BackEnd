@@ -3,6 +3,8 @@ package com.example.ai_chatbot.controller;
 import com.example.ai_chatbot.dto.NoticeResponseDto;
 import com.example.ai_chatbot.entity.Notice;
 //import com.example.ai_chatbot.repository.NoticeRepository;
+
+import com.example.ai_chatbot.dto.SearchResponseDto;
 import com.example.ai_chatbot.service.NoticeService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -34,7 +36,7 @@ public class NoticeController {
     }
 
     @GetMapping("/search")
-    public List<NoticeResponseDto> searchNotices(@RequestParam String keyword){
+    public SearchResponseDto searchNotices(@RequestParam String keyword){
         return noticeService.searchNotices(keyword);
     }
     @GetMapping("/notices/category")
