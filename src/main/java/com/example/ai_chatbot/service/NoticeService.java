@@ -51,6 +51,11 @@ public class NoticeService {
 
     public SearchResponseDto searchNotices(String keyword){ //키워드 검색 로직
        String normalizedKeyword=keywordService.normalizeKeyword(keyword);
+       String estimatedCategory=keywordService.estimateCategory(normalizedKeyword);
+
+       System.out.println("입력 키워드: "+keyword);
+       System.out.println("정규화 키워드: "+normalizedKeyword);
+       System.out.println("추정 카테고리: "+estimatedCategory);
 
 
        List<NoticeResponseDto> results=
@@ -63,7 +68,7 @@ public class NoticeService {
                 .map(NoticeResponseDto::new)
                 .collect(Collectors.toList());
 
-       return new SearchResponseDto(normalizedKeyword, results);
+       return new SearchResponseDto(normalizedKeyword, estimatedCategory, results);
     }
 
     public List<NoticeResponseDto> getNoticesByCategory(String category){ //카테고리 기준 조회 로직

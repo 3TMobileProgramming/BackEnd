@@ -40,6 +40,7 @@ public class AiSearchService {
             return new AiAnswerResponseDto(
                     question,
                     searchResult.getKeyword(),
+                    searchResult.getEstimatedCategory(),
                     "관련 공지를 찾을 수 없습니다.",
                     searchResult.getResults()
             );
@@ -53,6 +54,7 @@ public class AiSearchService {
         return new AiAnswerResponseDto(
                 question,
                 searchResult.getKeyword(),
+                searchResult.getEstimatedCategory(),
                 answer,
                 searchResult.getResults()
         );
