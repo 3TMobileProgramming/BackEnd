@@ -1,12 +1,31 @@
 package com.example.ai_chatbot.service;
 
 import com.example.ai_chatbot.dto.NoticeResponseDto;
+import org.springframework.beans.factory.annotation.Value; //api
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient; //api
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class GptService {
+
+    private final WebClient webClient;
+
+    @Value("${OPENAI_API_KEY}")
+    private String apiKey;
+
+    @Value("${openai.api.url}")
+    private String apiUrl;
+
+    @Value("${openai.model}")
+    private String model;
+
+    public GptService(WebClient.Builder webClientBuilder) {
+        this.webClient = webClientBuilder.build();
+    }
+
 
     public String createAnswerPrompt(String question, List<NoticeResponseDto> notices) {
 
@@ -37,5 +56,34 @@ public class GptService {
         prompt.append("- 마지막에 참고한 공지 제목을 함께 표시해라.\n");
 
         return prompt.toString();
+
     }
+
+    public String callGpt(String prompt) {
+
+        System.out.println("apiUrl = " + apiUrl); //오류 콘솔 출력
+        System.out.println("model = " + model);
+        System.out.println("apiKey exists = " + (apiKey != null && !apiKey.isBlank()));
+
+        Map<String, Object> requestBody = Map.of(
+                "model", model,
+                "input", prompt
+        );
+
+        try { //오류 쉽게 캐치
+            return webClient.post()
+                    .uri(apiUrl)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "GPT API 호출 중 오류가 발생했습니다: " + e.getMessage(); //오류 쉽게 캐치
+        }
+    }
+
+
 }

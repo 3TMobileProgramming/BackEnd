@@ -18,4 +18,10 @@ public class AiController {
     public String createPrompt(@RequestParam String question) {
         return aiSearchService.createPromptForQuestion(question);
     }
+
+
+    @GetMapping("/ai/answer")
+    public String answer(@RequestParam String question) {
+        return aiSearchService.answerQuestion(question);
+    }
 }

@@ -28,4 +28,20 @@ public class AiSearchService {
                 searchResult.getResults()
         );
     }
+
+    public String answerQuestion(String question) {
+
+        SearchResponseDto searchResult = noticeService.searchNotices(question);
+
+        if (searchResult.getCount() == 0) {
+            return "관련 공지를 찾을 수 없습니다.";
+        }
+
+        String prompt = gptService.createAnswerPrompt(
+                question,
+                searchResult.getResults()
+        );
+
+        return gptService.callGpt(prompt);
+    }
 }
