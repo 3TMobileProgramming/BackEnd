@@ -27,7 +27,7 @@ public class NoticeController {
 
     @GetMapping("/notice-test")
     public String noticeTest() {
-            return noticeService.saveTestNotice();
+            return noticeService.saveTestNotices();
         }
 
     @GetMapping("/notices")
