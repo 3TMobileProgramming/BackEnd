@@ -1,6 +1,8 @@
 package com.example.ai_chatbot.service;
 
 import com.example.ai_chatbot.dto.NoticeResponseDto;
+import com.fasterxml.jackson.databind.JsonNode;  //json modify
+import com.fasterxml.jackson.databind.ObjectMapper; //json modify
 import org.springframework.beans.factory.annotation.Value; //api
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient; //api
@@ -12,6 +14,7 @@ import java.util.Map;
 public class GptService {
 
     private final WebClient webClient;
+    private final ObjectMapper objectMapper;
 
     @Value("${OPENAI_API_KEY}")
     private String apiKey;
@@ -22,8 +25,9 @@ public class GptService {
     @Value("${openai.model}")
     private String model;
 
-    public GptService(WebClient.Builder webClientBuilder) {
+    public GptService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
         this.webClient = webClientBuilder.build();
+        this.objectMapper = objectMapper;
     }
 
 
@@ -61,17 +65,13 @@ public class GptService {
 
     public String callGpt(String prompt) {
 
-        System.out.println("apiUrl = " + apiUrl); //오류 콘솔 출력
-        System.out.println("model = " + model);
-        System.out.println("apiKey exists = " + (apiKey != null && !apiKey.isBlank()));
-
         Map<String, Object> requestBody = Map.of(
                 "model", model,
                 "input", prompt
         );
 
         try { //오류 쉽게 캐치
-            return webClient.post()
+            String responseJson=webClient.post()
                     .uri(apiUrl)
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
@@ -79,11 +79,35 @@ public class GptService {
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
+
+            return extractAnswerText(responseJson);
         } catch (Exception e) {
             e.printStackTrace();
             return "GPT API 호출 중 오류가 발생했습니다: " + e.getMessage(); //오류 쉽게 캐치
         }
     }
 
+    private String extractAnswerText(String responseJson) {
+        try {
+            JsonNode root = objectMapper.readTree(responseJson);
+            JsonNode outputArray = root.path("output");
 
+            for (JsonNode outputNode : outputArray) {
+                JsonNode contentArray = outputNode.path("content");
+
+                for (JsonNode contentNode : contentArray) {
+                    String type = contentNode.path("type").asText();
+
+                    if ("output_text".equals(type)) {
+                        return contentNode.path("text").asText();
+                    }
+                }
+            }
+            return "GPT 응답에서 답변 내용을 찾을 수 없습니다.";
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "GPT 응답을 해석하는 중 오류가 발생했습니다.";
+        }
+    }
 }
