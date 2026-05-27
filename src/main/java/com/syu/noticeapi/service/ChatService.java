@@ -2,7 +2,8 @@ package com.syu.noticeapi.service;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -15,35 +16,48 @@ import com.syu.noticeapi.repository.NoticeRepository;
 @Service
 public class ChatService {
 
-    private final NoticeRepository noticeRepository;
+    private static final int GPT_NOTICE_LIMIT = 3;
 
-    public ChatService(NoticeRepository noticeRepository) {
+    private final NoticeRepository noticeRepository;
+    private final KeywordService keywordService;
+    private final GptService gptService;
+
+    public ChatService(
+            NoticeRepository noticeRepository,
+            KeywordService keywordService,
+            GptService gptService
+    ) {
         this.noticeRepository = noticeRepository;
+        this.keywordService = keywordService;
+        this.gptService = gptService;
     }
 
     public ChatResponseDto ask(String question) {
 
-        String category = extractCategory(question);
-        List<String> keywords = extractKeywords(question);
+        String normalizedKeyword = keywordService.normalizeKeyword(question);
+        String estimatedCategory = keywordService.estimateCategory(normalizedKeyword);
 
-        List<Notice> all = (category != null)
-                ? noticeRepository.findByCategoryOrderByDateDesc(category)
-                : noticeRepository.findAllByOrderByDateDesc();
+        System.out.println("입력 질문: " + question);
+        System.out.println("정규화 키워드: " + normalizedKeyword);
+        System.out.println("추정 카테고리: " + estimatedCategory);
 
-        // 점수 기반 관련 공지 추출
-        List<Notice> ranked = all.stream()
-                .map(n -> new ScoredNotice(n, score(n, keywords)))
-                .filter(sn -> sn.score > 0)
-                .sorted((a, b) -> b.score - a.score)
-                .limit(5)
-                .map(sn -> sn.notice)
-                .collect(Collectors.toList());
+        List<Notice> candidates = searchNotices(normalizedKeyword, estimatedCategory);
 
-        if (ranked.isEmpty()) {
-            ranked = all.stream().limit(5).collect(Collectors.toList());
+        if (candidates.isEmpty()) {
+            return new ChatResponseDto(
+                    question,
+                    "관련 공지를 찾을 수 없습니다.",
+                    List.of()
+            );
         }
 
-        List<NoticeSummaryDto> result = ranked.stream()
+        List<Notice> selectedNotices = selectNoticesForGpt(
+                candidates,
+                normalizedKeyword,
+                estimatedCategory
+        );
+
+        List<NoticeSummaryDto> result = selectedNotices.stream()
                 .map(n -> new NoticeSummaryDto(
                         n.getId(),
                         n.getTitle(),
@@ -52,86 +66,81 @@ public class ChatService {
                 ))
                 .collect(Collectors.toList());
 
-        String answer = generateAnswer(question, keywords, result);
+        String prompt = gptService.createAnswerPrompt(question, selectedNotices);
+        String answer = gptService.callGpt(prompt);
 
         return new ChatResponseDto(question, answer, result);
     }
 
-    // =====================================================
-    // 키워드 추출 — 하드코딩 대신 형태소 단위로 분리
-    // GPT 연동 시 이 메서드 전체를 GPT 호출로 교체 예정
-    // =====================================================
-    private List<String> extractKeywords(String question) {
-        List<String> keywords = new ArrayList<>();
+    private List<Notice> searchNotices(String normalizedKeyword, String estimatedCategory) {
 
-        String[] tokens = question.split("\\s+|(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
-        for (String token : tokens) {
-            String t = token.replaceAll("[^가-힣a-zA-Z0-9]", "").trim();
-            if (t.length() >= 2) keywords.add(t);
+        List<Notice> searched;
+
+        if (estimatedCategory != null && !"기타".equals(estimatedCategory)) {
+            searched = noticeRepository.searchByFullTextAndCategory(
+                    normalizedKeyword,
+                    estimatedCategory
+            );
+        } else {
+            searched = noticeRepository.searchByFullText(normalizedKeyword);
         }
 
-        // 불용어 제거
-        List<String> stopwords = List.of("있나요", "언제", "어디서", "알려줘", "궁금해", "인가요", "알고싶어", "입니다", "있어요");
-        keywords.removeIf(k -> stopwords.stream().anyMatch(s -> k.contains(s)));
+        // FULLTEXT 검색 결과가 없을 때 기존 방식으로 fallback
+        if (searched == null || searched.isEmpty()) {
+            if (estimatedCategory != null && !"기타".equals(estimatedCategory)) {
+                searched = noticeRepository.findByCategoryOrderByDateDesc(estimatedCategory);
+            } else {
+                searched = noticeRepository.findAllByOrderByDateDesc();
+            }
+        }
 
-        if (keywords.isEmpty()) keywords.add(question.trim());
-
-        return keywords;
+        return searched;
     }
 
-    // =====================================================
-    // 카테고리 추출
-    // =====================================================
-    private String extractCategory(String question) {
-        if (question.contains("장학")) return "장학";
-        if (question.contains("수강") || question.contains("폐강")
-                || question.contains("등록") || question.contains("학사")) return "학사";
-        if (question.contains("행사") || question.contains("이벤트")) return "행사";
-        return null;
+    private List<Notice> selectNoticesForGpt(
+            List<Notice> notices,
+            String normalizedKeyword,
+            String estimatedCategory
+    ) {
+        return notices.stream()
+                .sorted(
+                        Comparator.comparingInt(
+                                (Notice notice) -> calculateNoticeScore(
+                                        notice,
+                                        normalizedKeyword,
+                                        estimatedCategory
+                                )
+                        ).reversed()
+                )
+                .limit(GPT_NOTICE_LIMIT)
+                .collect(Collectors.toList());
     }
 
-    // =====================================================
-    // 점수 계산
-    // =====================================================
-    private int score(Notice notice, List<String> keywords) {
+    private int calculateNoticeScore(
+            Notice notice,
+            String normalizedKeyword,
+            String estimatedCategory
+    ) {
         int score = 0;
-        for (String k : keywords) {
-            if (notice.getTitle() != null && notice.getTitle().contains(k)) score += 10;
-            if (notice.getBody() != null && notice.getBody().contains(k)) score += 5;
+
+        if (notice.getTitle() != null
+                && normalizedKeyword != null
+                && notice.getTitle().contains(normalizedKeyword)) {
+            score += 5;
         }
+
+        if (notice.getCategory() != null
+                && estimatedCategory != null
+                && notice.getCategory().equals(estimatedCategory)) {
+            score += 3;
+        }
+
+        if (notice.getBody() != null
+                && normalizedKeyword != null
+                && notice.getBody().contains(normalizedKeyword)) {
+            score += 2;
+        }
+
         return score;
-    }
-
-    // =====================================================
-    // 자연어 답변 생성
-    // GPT 연동 시 이 메서드를 GPT 호출로 교체 예정
-    // =====================================================
-    private String generateAnswer(String question, List<String> keywords, List<NoticeSummaryDto> result) {
-        if (result.isEmpty()) {
-            return "'" + String.join(", ", keywords) + "' 관련 공지를 찾지 못했습니다. 다른 키워드로 검색해보세요.";
-        }
-
-        String keyword = keywords.isEmpty() ? "" : keywords.get(0);
-
-        if (question.contains("언제")) {
-            return "'" + keyword + "' 관련 최신 공지 기준으로 안내드립니다. 아래 공지를 확인하세요.";
-        }
-        if (question.contains("신청")) {
-            return "'" + keyword + "' 신청 관련 공지입니다. 공지 본문에서 신청 기간과 방법을 확인하세요.";
-        }
-        if (question.contains("기간") || question.contains("일정")) {
-            return "'" + keyword + "' 관련 일정 공지입니다. 날짜를 꼭 확인하세요.";
-        }
-
-        return "'" + keyword + "' 관련 최신 공지 " + result.size() + "건입니다.";
-    }
-
-    private static class ScoredNotice {
-        Notice notice;
-        int score;
-        ScoredNotice(Notice notice, int score) {
-            this.notice = notice;
-            this.score = score;
-        }
     }
 }
