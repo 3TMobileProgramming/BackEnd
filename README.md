@@ -25,7 +25,7 @@
 | AI | OpenAI GPT-4o-mini API |
 | 빌드 | Maven |
 
----
+```
 
 ## 프로그램 구조
 src/main/java/com/syu/noticeapi/
@@ -55,7 +55,7 @@ src/main/java/com/syu/noticeapi/
 ├── NoticeDetailDto.java        # 상세 응답
 ├── ChatRequestDto.java         # 채팅 요청
 └── ChatResponseDto.java        # 채팅 응답
-
+```
 ---
 
 ## 주요 기능
