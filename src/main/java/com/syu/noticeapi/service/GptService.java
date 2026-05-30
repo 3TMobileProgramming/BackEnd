@@ -44,7 +44,6 @@ public class GptService {
 
         for (int i = 0; i < notices.size(); i++) {
             Notice notice = notices.get(i);
-
             prompt.append("공지 ").append(i + 1).append("\n");
             prompt.append("제목: ").append(notice.getTitle()).append("\n");
             prompt.append("카테고리: ").append(notice.getCategory()).append("\n");
@@ -62,9 +61,15 @@ public class GptService {
     }
 
     public String callGpt(String prompt) {
+        Map<String, Object> message = Map.of(
+                "role", "user",
+                "content", prompt
+        );
+
         Map<String, Object> requestBody = Map.of(
                 "model", model,
-                "input", prompt
+                "messages", List.of(message),
+                "max_tokens", 1000
         );
 
         try {
@@ -88,22 +93,11 @@ public class GptService {
     private String extractAnswerText(String responseJson) {
         try {
             JsonNode root = objectMapper.readTree(responseJson);
-            JsonNode outputArray = root.path("output");
-
-            for (JsonNode outputNode : outputArray) {
-                JsonNode contentArray = outputNode.path("content");
-
-                for (JsonNode contentNode : contentArray) {
-                    String type = contentNode.path("type").asText();
-
-                    if ("output_text".equals(type)) {
-                        return contentNode.path("text").asText();
-                    }
-                }
-            }
-
-            return "GPT 응답에서 답변 내용을 찾을 수 없습니다.";
-
+            return root.path("choices")
+                    .get(0)
+                    .path("message")
+                    .path("content")
+                    .asText();
         } catch (Exception e) {
             e.printStackTrace();
             return "GPT 응답을 해석하는 중 오류가 발생했습니다.";
